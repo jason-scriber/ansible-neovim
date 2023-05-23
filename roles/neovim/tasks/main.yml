@@ -1,0 +1,140 @@
+---
+- name: Ensure dependencies are installed
+  apt:
+    name:
+      - curl
+      - jq
+      - libfuse2
+      - build-essential
+      - python3.10-venv
+    state: present
+
+- name: Get the Neovim release URL
+  uri:
+    url: "https://api.github.com/repos/neovim/neovim/releases/{{ 'latest' if neovim_version == 'latest' else 'tags/' + neovim_version }}"
+    return_content: yes
+    follow_redirects: all
+    headers:
+      Accept: "application/vnd.github+json"
+  register: neovim_release_data
+  delegate_to: localhost
+
+- name: Set Neovim release URL variable
+  set_fact:
+    neovim_release_url: "{{ neovim_release_data.json.assets | selectattr('name', 'match', '^nvim\\.appimage$') | map(attribute='browser_download_url') | first }}"
+
+- name: Download Neovim binary from GitHub releases
+  get_url:
+    url: "{{ neovim_release_url }}"
+    dest: "/usr/local/bin/nvim"
+
+- name: make NeoVim executable
+  ansible.builtin.file:
+    path: /usr/local/bin/nvim
+    mode: '0755'
+
+- name: Create Neovim config directory
+  file:
+    path: "{{ neovim_config_path }}"
+    state: directory
+    mode: '0755'
+
+- name: Deploy Neovim init.lua configuration
+  template:
+    src: "init.lua.j2"
+    dest: "{{ neovim_config_path }}/init.lua"
+    mode: '0644'
+
+- name: Create after/plugin
+  file:
+    path: "{{ neovim_config_path }}/after/plugin"
+    state: directory
+    mode: '0755'
+
+- name: Create lua/wz
+  file:
+    path: "{{ neovim_config_path }}/lua/wz"
+    state: directory
+    mode: '0755'
+
+- name: Deploy lua/wz/init.lua
+  template:
+    src: "wz.lua.j2"
+    dest: "{{ neovim_config_path }}/lua/wz/init.lua"
+    mode: '0644'
+
+- name: Deploy lua/wz/remap.lua
+  template:
+    src: "remap.lua.j2"
+    dest: "{{ neovim_config_path }}/lua/wz/remap.lua"
+    mode: '0644'
+
+- name: Deploy lua/wz/packer.lua
+  template:
+    src: "packer.lua.j2"
+    dest: "{{ neovim_config_path }}/lua/wz/packer.lua"
+    mode: '0644'
+
+- name: Deploy lua/wz/set.lua
+  template:
+    src: "set.lua.j2"
+    dest: "{{ neovim_config_path }}/lua/wz/set.lua"
+    mode: '0644'
+
+- name: Deploy after/plugin/nvim-tree.lua
+  template:
+    src: "nvim-tree.lua.j2"
+    dest: "{{ neovim_config_path }}/after/plugin/nvim-tree.lua"
+    mode: '0644'
+
+- name: Deploy after/plugin/onedark.lua
+  template:
+    src: "onedark.lua.j2"
+    dest: "{{ neovim_config_path }}/after/plugin/onedark.lua"
+    mode: '0644'
+
+- name: Deploy after/plugin/telescope.lua
+  template:
+    src: "telescope.lua.j2"
+    dest: "{{ neovim_config_path }}/after/plugin/telescope.lua"
+    mode: '0644'
+
+- name: Deploy after/plugin/treesitter.lua
+  template:
+    src: "treesitter.lua.j2"
+    dest: "{{ neovim_config_path }}/after/plugin/treesitter.lua"
+    mode: '0644'
+
+- name: Deploy after/plugin/harpoon.lua
+  template:
+    src: "harpoon.lua.j2"
+    dest: "{{ neovim_config_path }}/after/plugin/harpoon.lua"
+    mode: '0644'
+
+- name: Deploy after/plugin/undotree.lua
+  template:
+    src: "undotree.lua.j2"
+    dest: "{{ neovim_config_path }}/after/plugin/undutree.lua"
+    mode: '0644'
+
+- name: Deploy after/plugin/fugitive.lua
+  template:
+    src: "fugitive.lua.j2"
+    dest: "{{ neovim_config_path }}/after/plugin/fugitive.lua"
+    mode: '0644'
+
+- name: Deploy after/plugin/lsp.lua
+  template:
+    src: "lsp.lua.j2"
+    dest: "{{ neovim_config_path }}/after/plugin/lsp.lua"
+    mode: '0644'
+
+- name: Check if packer exists
+  stat:
+    path: /root/.local/share/nvim/site/pack/packer/start/packer.nvim
+  register: stat_packer
+
+- name: Download packer
+  command: git clone --depth 1 https://github.com/wbthomason/packer.nvim ~/.local/share/nvim/site/pack/packer/start/packer.nvim
+  when: not stat_packer.stat.exists
+

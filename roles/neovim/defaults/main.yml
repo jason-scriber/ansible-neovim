@@ -1,0 +1,3 @@
+---
+neovim_version: "stable"
+neovim_config_path: "~/.config/nvim"
